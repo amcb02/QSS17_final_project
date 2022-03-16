@@ -1,0 +1,1571 @@
+## Data Visualization (GOVT16-QSS17) Fall 2021
+## Final Project: Visualizing NHL playoff goals and the importance of protecting "the house" in the defensive zone
+##
+## Name: Andy McBurney
+## Date: Due Monday, November 15, 2021
+
+#Packages
+{
+library(remotes)
+library(latticeExtra)
+library(devtools)
+library(ggforce)
+library(tidyverse)
+remotes::install_github("jozefhajnala/nhlapi")#, force=TRUE) 
+library(nhlapi)
+library(magick)
+library(gganimate)
+library(reshape)
+library(reshape2)
+library(lubridate)
+library(splancs)
+library(gridExtra)
+library(gifski)
+library(png)
+library(image)
+library(scale)
+}
+
+# Retrieve game feed data 
+{
+gameFeeds2010playoffs <- lapply(
+  2010030001:2010031000,
+  nhlapi::nhl_games_feed)
+  
+gameFeeds2011playoffs <- lapply(
+  2011030001:2011031000,
+  nhlapi::nhl_games_feed)
+  
+gameFeeds2012playoffs <- lapply(
+  2012030001:2012031000,
+  nhlapi::nhl_games_feed)
+  
+gameFeeds2013playoffs <- lapply(
+  2013030001:2013031000,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2014playoffs <- lapply(
+  2014030001:2014031000,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2015playoffs <- lapply(
+  2015030001:2015031000,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2016playoffs <- lapply(
+  2016030001:2016031000,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2017playoffs <- lapply(
+  2017030001:2017030700,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2018playoffs <- lapply(
+  2018030001:2018030700,
+  nhlapi::nhl_games_feed)
+
+gameFeeds2019playoffs <- lapply(
+  2019030001:2019030700,
+  nhlapi::nhl_games_feed)
+}
+
+# Create a data.frame with plays
+{
+getPlaysDf <- function(x) {
+  playsRes <- try(x[[1L]][["liveData"]][["plays"]][["allPlays"]]) 
+  if (inherits(playsRes, "try-error")) data.frame() else playsRes 
+}
+  
+playoff2010 <- lapply(gameFeeds2010playoffs, getPlaysDf)
+playoff2010 <- nhlapi:::util_rbindlist(playoff2010)
+playoff2010 <- playoff2010[!is.na(playoff2010$coordinates.x), ]
+  
+playoff2011 <- lapply(gameFeeds2011playoffs, getPlaysDf)
+playoff2011 <- nhlapi:::util_rbindlist(playoff2011)
+playoff2011 <- playoff2011[!is.na(playoff2011$coordinates.x), ]
+  
+playoff2012 <- lapply(gameFeeds2012playoffs, getPlaysDf)
+playoff2012 <- nhlapi:::util_rbindlist(playoff2012)
+playoff2012 <- playoff2012[!is.na(playoff2012$coordinates.x), ]
+  
+playoff2013 <- lapply(gameFeeds2013playoffs, getPlaysDf)
+playoff2013 <- nhlapi:::util_rbindlist(playoff2013)
+playoff2013 <- playoff2013[!is.na(playoff2013$coordinates.x), ]
+
+playoff2014 <- lapply(gameFeeds2014playoffs, getPlaysDf)
+playoff2014 <- nhlapi:::util_rbindlist(playoff2014)
+playoff2014 <- playoff2014[!is.na(playoff2014$coordinates.x), ]
+
+playoff2015 <- lapply(gameFeeds2015playoffs, getPlaysDf)
+playoff2015 <- nhlapi:::util_rbindlist(playoff2015)
+playoff2015 <- playoff2015[!is.na(playoff2015$coordinates.x), ]
+
+playoff2016 <- lapply(gameFeeds2016playoffs, getPlaysDf)
+playoff2016 <- nhlapi:::util_rbindlist(playoff2016)
+playoff2016 <- playoff2016[!is.na(playoff2016$coordinates.x), ]
+
+playoff2017 <- lapply(gameFeeds2017playoffs, getPlaysDf)
+playoff2017 <- nhlapi:::util_rbindlist(playoff2017)
+playoff2017 <- playoff2017[!is.na(playoff2017$coordinates.x), ]
+
+playoff2018 <- lapply(gameFeeds2018playoffs, getPlaysDf)
+playoff2018 <- nhlapi:::util_rbindlist(playoff2018)
+playoff2018 <- playoff2018[!is.na(playoff2018$coordinates.x), ]
+
+playoff2019 <- lapply(gameFeeds2019playoffs, getPlaysDf)
+playoff2019 <- nhlapi:::util_rbindlist(playoff2019)
+playoff2019 <- playoff2019[!is.na(playoff2019$coordinates.x), ]
+}
+
+# Move x coordinates to right side of rink only
+{
+playoff2010$coordx <- abs(playoff2010$coordinates.x) 
+playoff2010$coordy <- playoff2010$coordinates.y 
+  
+playoff2011$coordx <- abs(playoff2011$coordinates.x) 
+playoff2011$coordy <- playoff2011$coordinates.y 
+
+playoff2012$coordx <- abs(playoff2012$coordinates.x) 
+playoff2012$coordy <- playoff2012$coordinates.y 
+  
+playoff2013$coordx <- abs(playoff2013$coordinates.x) 
+playoff2013$coordy <- playoff2013$coordinates.y 
+
+playoff2014$coordx <- abs(playoff2014$coordinates.x) 
+playoff2014$coordy <- playoff2014$coordinates.y 
+
+playoff2015$coordx <- abs(playoff2015$coordinates.x) 
+playoff2015$coordy <- playoff2015$coordinates.y 
+
+playoff2016$coordx <- abs(playoff2016$coordinates.x) 
+playoff2016$coordy <- playoff2016$coordinates.y 
+
+playoff2017$coordx <- abs(playoff2017$coordinates.x) 
+playoff2017$coordy <- playoff2017$coordinates.y 
+
+playoff2018$coordx <- abs(playoff2018$coordinates.x) 
+playoff2018$coordy <- playoff2018$coordinates.y 
+
+playoff2019$coordx <- abs(playoff2019$coordinates.x) 
+playoff2019$coordy <- playoff2019$coordinates.y 
+}
+
+# Select goals only
+{
+goals2010playoffs <- playoff2010[playoff2010$result.event == "Goal", ]
+goals2011playoffs <- playoff2011[playoff2011$result.event == "Goal", ]
+goals2012playoffs <- playoff2012[playoff2012$result.event == "Goal", ]
+goals2013playoffs <- playoff2013[playoff2013$result.event == "Goal", ]
+goals2014playoffs <- playoff2014[playoff2014$result.event == "Goal", ]
+goals2015playoffs <- playoff2015[playoff2015$result.event == "Goal", ]
+goals2016playoffs <- playoff2016[playoff2016$result.event == "Goal", ]
+goals2017playoffs <- playoff2017[playoff2017$result.event == "Goal", ]
+goals2018playoffs <- playoff2018[playoff2018$result.event == "Goal", ]
+goals2019playoffs <- playoff2019[playoff2019$result.event == "Goal", ]
+}
+
+#Filter and mutate goals df to get correct periods and dates
+{
+  goals2010playoffs2 <- goals2010playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2011playoffs2 <- goals2011playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2012playoffs2 <- goals2012playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2013playoffs2 <- goals2013playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2014playoffs2 <- goals2014playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2015playoffs2 <- goals2015playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+  
+  goals2016playoffs2 <- goals2016playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(1))
+
+  goals2017playoffs2 <- goals2017playoffs%>%
+  filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+  mutate(period = case_when(
+    about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+    about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+  ))%>%
+  mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+  mutate(dates = as.Date(date_str))%>%
+  mutate(transition = as.integer(2))
+
+goals2018playoffs2 <- goals2018playoffs%>%
+  filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+  mutate(period = case_when(
+    about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+    about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+  ))%>%
+  mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+  mutate(dates = as.Date(date_str))%>%
+  mutate(transition = as.integer(3))
+
+goals2019playoffs2 <- goals2019playoffs%>%
+    filter(about.ordinalNum != "SO")%>% #remove shootout goals (don't count in player stats)
+    mutate(period = case_when(
+      about.ordinalNum == "OT" | about.ordinalNum == "5OT" ~ as.integer(4), #make all OT goals = period 4
+      about.ordinalNum != "OT" ~ as.integer(str_sub(about.ordinalNum, 1, 1)) #make all regular time goals = resepctive period
+    ))%>%
+    mutate(date_str = str_sub(about.dateTime, 1, 10))%>%
+    mutate(dates = as.Date(date_str))%>%
+    mutate(transition = as.integer(4))
+}
+
+the_house <- data.frame(x = c(54, 54, 69, 89, 89, 69), xend = c(54, 69, 89, 89, 69, 89), y = c(22, -22, -22, -4, 4, 22), yend = c(-22, -22, -4, 4, 22, 22))
+#Coordinate data frames
+{
+coords2010 <- data.frame(x = goals2010playoffs2$coordx, y = goals2010playoffs2$coordy)
+coords2011 <- data.frame(x = goals2011playoffs2$coordx, y = goals2011playoffs2$coordy)
+coords2012 <- data.frame(x = goals2012playoffs2$coordx, y = goals2012playoffs2$coordy)
+coords2013 <- data.frame(x = goals2013playoffs2$coordx, y = goals2013playoffs2$coordy)
+coords2014 <- data.frame(x = goals2014playoffs2$coordx, y = goals2014playoffs2$coordy)
+coords2015 <- data.frame(x = goals2015playoffs2$coordx, y = goals2015playoffs2$coordy)
+coords2016 <- data.frame(x = goals2016playoffs2$coordx, y = goals2016playoffs2$coordy)
+coords2017 <- data.frame(x = goals2017playoffs2$coordx, y = goals2017playoffs2$coordy)
+coords2018 <- data.frame(x = goals2018playoffs2$coordx, y = goals2018playoffs2$coordy)
+coords2019 <- data.frame(x = goals2019playoffs2$coordx, y = goals2019playoffs2$coordy)
+}
+
+#Finding percentage of goals coming from inside "the house"
+{
+  {coords2010$house <- 1:dim(coords2010)[1] %in% inpip(coords2010, the_house)
+  coords2010 <- coords2010%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2010)[1])}
+  
+  {coords2011$house <- 1:dim(coords2011)[1] %in% inpip(coords2011, the_house)
+  coords2011 <- coords2011%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2011)[1])}
+  
+  {coords2012$house <- 1:dim(coords2012)[1] %in% inpip(coords2012, the_house)
+  coords2012 <- coords2012%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2012)[1])}
+  
+{coords2014$house <- 1:dim(coords2014)[1] %in% inpip(coords2014, the_house)
+  coords2014 <- coords2014%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2014)[1])}
+
+{coords2015$house <- 1:dim(coords2015)[1] %in% inpip(coords2015, the_house)
+  coords2015 <- coords2015%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2015)[1])}
+
+{coords2016$house <- 1:dim(coords2016)[1] %in% inpip(coords2016, the_house)
+  coords2016 <- coords2016%>%
+    mutate(yes = case_when(
+      house == "TRUE" ~ 1,
+      house == "FALSE" ~ 0,
+    ))%>%
+    mutate(percent = sum(yes)/dim(coords2016)[1])}
+
+{coords2017$house <- 1:dim(coords2017)[1] %in% inpip(coords2017, the_house)
+coords2017 <- coords2017%>%
+  mutate(yes = case_when(
+    house == "TRUE" ~ 1,
+    house == "FALSE" ~ 0,
+  ))%>%
+  mutate(percent = sum(yes)/dim(coords2017)[1])}
+
+{coords2018$house <- 1:dim(coords2018)[1] %in% inpip(coords2018, the_house)
+coords2018 <- coords2018%>%
+  mutate(yes = case_when(
+    house == "TRUE" ~ 1,
+    house == "FALSE" ~ 0,
+  ))%>%
+  mutate(percent = sum(yes)/dim(coords2018)[1])}
+
+{coords2019$house <- 1:dim(coords2019)[1] %in% inpip(coords2019, the_house)
+coords2019 <- coords2019%>%
+  mutate(yes = case_when(
+    house == "TRUE" ~ 1,
+    house == "FALSE" ~ 0,
+  ))%>%
+  mutate(percent = sum(yes)/dim(coords2019)[1])}
+}
+
+# Data frame of % of goals from inside the house and year
+{
+percent2010 <- data.frame(percent = coords2010$percent[1], year = as.integer(2010))
+percent2011 <- data.frame(percent = coords2011$percent[1], year = as.integer(2011))
+percent2012 <- data.frame(percent = coords2012$percent[1], year = as.integer(2012))
+percent2013 <- data.frame(percent = coords2013$percent[1], year = as.integer(2013))
+percent2014 <- data.frame(percent = coords2014$percent[1], year = as.integer(2014))
+percent2015 <- data.frame(percent = coords2015$percent[1], year = as.integer(2015))
+percent2016 <- data.frame(percent = coords2016$percent[1], year = as.integer(2016))
+percent2017 <- data.frame(percent = coords2017$percent[1], year = as.integer(2017))
+percent2018 <- data.frame(percent = coords2018$percent[1], year = as.integer(2018))
+percent2019 <- data.frame(percent = coords2019$percent[1], year = as.integer(2019))
+full_percent <- data.frame(rbind(percent2010, percent2011, percent2012, percent2013, percent2014, percent2015, percent2016, percent2017, percent2018, percent2019))
+}
+
+# Plot % of goals inside the house and year
+full_percent$house_mean <- mean(percent2010$percent, percent2011$percent, percent2012$percent, percent2013$percent, percent2014$percent, percent2015$percent, percent2016$percent, percent2017$percent, percent2018$percent, percent2019$percent)
+full_percent$house_mean <- percent(full_percent$house_mean)
+full_percent$percent <- percent(full_percent$percent)
+caption = 'Source: NHL.com.\n"The House" is known as the area in which players have the highest possibility of scoring, and thus is the most coveted area of ice on the entire rink.\nNote: in 2019 the NHL playoff format was changed to include 24 teams, while previous playoffs included 16.'
+{house_plot <- full_percent%>%
+ggplot(aes(x= year, y = percent))+
+    geom_path(aes(color='Yearly Percentage'))+
+    geom_line(aes(x=year, y = house_mean, color='Decade Average'), linetype = "dashed")+
+    transition_reveal(along = year) +
+    shadow_mark(past = TRUE, future = TRUE, exclude_layer = 1, fill = "#bcbcbc")+
+    scale_color_manual(values = c("#f44336", "#2986cc"))+
+  theme_classic()+
+    scale_y_continuous(labels = scales::percent,)+
+  scale_x_continuous(limits = c(2010, 2019), breaks = 2010:2019, minor_breaks = NULL)+
+    labs(title = 'Percentage of Goals inside "the house" over the past decade',
+         color = "Line Type", y="Percentage", caption = caption)+
+    theme(axis.text.x = element_text(size = 16, face = "italic", angle = 90),
+          axis.text.y = element_text(size = 16, face = "italic"),
+          legend.text = element_text(size = 16),
+          legend.title = element_blank(),
+          panel.grid.major.y =  element_line(size=0.4, color = '#bcbcbc'),
+          axis.title = element_text(size = 20, face = "italic"),
+      plot.title = element_text(hjust =0.5, face = 'bold.italic', size =26),
+          plot.caption.position = 'plot',
+          plot.caption = element_text(size = 12))
+}
+
+#colors
+{
+NHL_red <- "#FFCCD8" # Use #C8102E for original red in the rules, #FFE6EB for lighter hue
+NHL_blue <- "#CCE1FF" # Use #0033A0 for original blue in the rules, #E6EFFF for lighter hue
+NHL_light_blue <- "#CCF5FF" # Use #41B6E6 for original crease blue in the rules, #E6F9FF for lighter hue
+
+rc_pal_goals <- colorRampPalette(colors = c("#ffffff", "#ff0000"))
+}
+
+#get NHL logo
+nhl_logo <-  grid::rasterGrob(png::readPNG("Desktop/nhl.png"), interpolate = TRUE)
+
+#heatmaps
+{
+playoffs2010_heatmap <- {ggplot() +
+      # Right goalie crease
+      geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+      geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      
+      #plot heat map under all other lines other than goalie crease
+      geom_density_2d_filled(data = goals2010playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+      scale_fill_manual(values = rc_pal_goals(14))+
+      
+      # Faceoff circles
+      geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+      geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+      
+      
+      # Hash marks, groups of four
+      geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      
+      # Center line
+      geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+      
+      # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+      geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+      geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+      
+      geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+      geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+      
+      #The "house"
+      annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+      annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+      annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+      annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+      # Ells surrounding faceoff dots
+      geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+      geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+      geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      # Referee crease
+      geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+      
+      
+      # Goalie net 
+      geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+      
+      # Trapezoid
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+      
+      # Lines
+      geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+      geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+      
+      # Borders as line segments 
+      geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+      geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+      geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+      geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+      geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+      
+      #plot goal points
+      geom_point(data = goals2010playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+      
+      # Fixed scale for the coordinate system  
+      coord_fixed()+
+      theme_void()+
+      transition_null()+
+      
+      labs(title = "Heatmap of Goals in the 2010 Playoffs")+
+      theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+      annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)} 
+playoffs2011_heatmap <- {ggplot() +
+      # Right goalie crease
+      geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+      geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      
+      #plot heat map under all other lines other than goalie crease
+      geom_density_2d_filled(data = goals2011playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+      scale_fill_manual(values = rc_pal_goals(14))+
+      
+      # Faceoff circles
+      geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+      geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+      
+      
+      # Hash marks, groups of four
+      geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      
+      # Center line
+      geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+      
+      # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+      geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+      geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+      
+      geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+      geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+      
+      #The "house"
+      annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+      annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+      annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+      annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+      # Ells surrounding faceoff dots
+      geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+      geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+      geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      # Referee crease
+      geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+      
+      
+      # Goalie net 
+      geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+      
+      # Trapezoid
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+      
+      # Lines
+      geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+      geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+      
+      # Borders as line segments 
+      geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+      geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+      geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+      geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+      geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+      
+      #plot goal points
+      geom_point(data = goals2011playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+      
+      # Fixed scale for the coordinate system  
+      coord_fixed()+
+      theme_void()+
+      transition_null()+
+      
+      labs(title = "Heatmap of Goals in the 2011 Playoffs")+
+      theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+      annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2012_heatmap <- {ggplot() +
+      # Right goalie crease
+      geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+      geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+      geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+      geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+      
+      #plot heat map under all other lines other than goalie crease
+      geom_density_2d_filled(data = goals2012playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+      scale_fill_manual(values = rc_pal_goals(14))+
+      
+      # Faceoff circles
+      geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+      geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+      
+      
+      # Hash marks, groups of four
+      geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+      geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+      
+      # Center line
+      geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+      
+      # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+      geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+      geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+      geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+      
+      geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+      geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+      
+      #The "house"
+      annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+      annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+      annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+      annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+      annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+      # Ells surrounding faceoff dots
+      geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+      geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+      geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+      
+      # Referee crease
+      geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+      
+      
+      # Goalie net 
+      geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+      
+      # Trapezoid
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+      #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+      
+      # Lines
+      geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+      geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+      
+      # Borders as line segments 
+      geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+      geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+      geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+      geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+      geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+      
+      #plot goal points
+      geom_point(data = goals2012playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+      
+      # Fixed scale for the coordinate system  
+      coord_fixed()+
+      theme_void()+
+      transition_null()+
+      
+      labs(title = "Heatmap of Goals in the 2012 Playoffs")+
+      theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+      annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2013_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2013playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(14))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2013playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_null()+
+    
+    labs(title = "Heatmap of Goals in the 2013 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2014_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2014playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(14))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2014playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_null()+
+    labs(title = "Heatmap of Goals in the 2014 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2015_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2015playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(14))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2015playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_null()+
+    
+    labs(title = "Heatmap of Goals in the 2015 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2016_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2016playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(13))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2016playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_null()+
+    
+    labs(title = "Heatmap of Goals in the 2016 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2017_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2017playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(14))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2017playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_states(transition, transition_length = .1,
+                      state_length = 100)+
+    
+    labs(title = "Heatmap of Goals in the 2017 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2018_heatmap <- {ggplot() +
+    # Right goalie crease
+    geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+    geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+    geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+    geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+    
+    #plot heat map under all other lines other than goalie crease
+    geom_density_2d_filled(data = goals2018playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+    scale_fill_manual(values = rc_pal_goals(13))+
+    
+    # Faceoff circles
+    geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+    geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+    
+    
+    # Hash marks, groups of four
+    geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+    geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+    
+    # Center line
+    geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+    
+    # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+    geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+    geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+    geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+    
+    geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+    geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+    
+    #The "house"
+    annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+    annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+    annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+    annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+    annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+    # Ells surrounding faceoff dots
+    geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+    geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+    geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+    
+    # Referee crease
+    geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+    
+    
+    # Goalie net 
+    geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+    
+    # Trapezoid
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+    #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+    
+    # Lines
+    geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+    geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+    
+    # Borders as line segments 
+    geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+    geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+    geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+    geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+    geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+    
+    #plot goal points
+    geom_point(data = goals2018playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+    
+    # Fixed scale for the coordinate system  
+    coord_fixed()+
+    theme_void()+
+    transition_null()+
+    
+    labs(title = "Heatmap of Goals in the 2018 Playoffs")+
+    theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+  annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+playoffs2019_heatmap <- {ggplot() +
+  # Right goalie crease
+  geom_tile(aes(x = 86.75, y = 0, width = 4.5, height = 8), fill = NHL_light_blue) +
+  geom_arc_bar(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r0 = 4, r = 6), fill = NHL_light_blue, colour = NHL_light_blue, size = 1 / 12) + # manually adjusted arc
+  geom_tile(aes(x = 86.75, y = -4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 86.75, y = 4, width = 4.5, height = 2 / 12), fill = NHL_red) +
+  geom_arc(aes(x0 = 89, y0 = 0, start = -atan(4.5/4) + 0.01, end = -pi + atan(4.5 / 4) - 0.01, r = 6), colour = NHL_red, size = 2 / 12) + # manually adjusted arc
+  geom_tile(aes(x = 85, y = 3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+  geom_tile(aes(x = 85, y = -3.75, width = 2 / 12, height = 0.42), fill = NHL_red) +
+  
+  #plot heat map under all other lines other than goalie crease
+  geom_density_2d_filled(data = goals2019playoffs2, aes(x=coordx, y=coordy, fill = ..level..), alpha =0.5, contour_var = "count",  na.rm = TRUE, show.legend = FALSE)+
+  scale_fill_manual(values = rc_pal_goals(12))+
+  
+  # Faceoff circles
+  geom_arc(aes(x0 = 0, y0 = 0, start = 0, end = pi , r = 15), colour = NHL_blue) + #Center
+  geom_circle(aes(x0 = 69, y0 = 22, r = 15), colour = NHL_red, size = 2 / 12) + # Top-Right
+  geom_circle(aes(x0 = 69, y0 = -22, r = 15), colour = NHL_red, size = 2 / 12) + # Bottom-Right
+  
+  
+  # Hash marks, groups of four
+  geom_tile(aes(x = 66.125, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 66.125, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 71.875, y = 37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 71.875, y = 6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 66.125, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 66.125, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 71.875, y = -37.77, width = 2 / 12, height = 2), fill = NHL_red) +
+  geom_tile(aes(x = 71.875, y = -6.23, width = 2 / 12, height = 2), fill = NHL_red) +
+  
+  # Center line
+  geom_tile(aes(x = 0, y = 0, width = 1, height = 85), fill = NHL_red) + # Center line
+  
+  # Faceoff dots - Plot AFTER center lines for center ice circle to show up above
+  geom_circle(aes(x0 = 0, y0 = 0, r = 6 / 12), colour = "#FF99B4", fill = "#FF99B4", size = 0) + # Center dot with unique red
+  geom_circle(aes(x0 = 69, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Top-Right
+  geom_circle(aes(x0 = 69, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Bottom-Right
+  
+  geom_circle(aes(x0 = 20.5, y0 = 22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Top-Right
+  geom_circle(aes(x0 = 20.5, y0 = -22, r = 1), colour = NHL_red, fill = NHL_red, size = 0) + # Neutral Bottom-Right
+  
+  #The "house"
+  annotate("segment", x = 89, xend = 69, y = 4, yend = 22, linetype = "dashed")+ #goal to Top-Right Faceoff dot
+  annotate("segment", x = 89, xend = 69, y = -4, yend = -22, linetype = "dashed")+ #goal to Bottom-Right Faceoff dot
+  annotate("segment", x = 69, xend = 54, y = 22, yend = 22, linetype = "dashed")+ #Top-Right Faceoff dot to top of Faceoff Circle
+  annotate("segment", x = 69, xend = 54, y = -22, yend = -22, linetype = "dashed")+ #Bottom-Right Faceoff dot to top of Faceoff Circle
+  annotate("segment", x = 54, xend = 54, y = 22, yend = -22, linetype = "dashed")+ #Top-Right to Top-Left Faceoff Circle
+  annotate("text", x=61, y=23.5, label='"The House"', size = 5, fontface = 'italic')+
+  # Ells surrounding faceoff dots
+  geom_tile(aes(x = 65, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Top-Right
+  geom_tile(aes(x = 73, y = 22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 65, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 73, y = 21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 66.92, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 71.08, y = 24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 66.92, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 71.08, y = 19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+  
+  geom_tile(aes(x = 65, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) + # Bottom-Right
+  geom_tile(aes(x = 73, y = -22.83, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 65, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 73, y = -21.17, width = 4, height = 2 / 12), fill = NHL_red) +
+  geom_tile(aes(x = 66.92, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 71.08, y = -24.25, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 66.92, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+  geom_tile(aes(x = 71.08, y = -19.75, width = 2 / 12, height = 3), fill = NHL_red) +
+  
+  # Referee crease
+  geom_arc(aes(x0 = 0, y0 = -42.5, start = 0, end = pi / 2, r = 10), colour = NHL_red) +
+  
+  
+  # Goalie net placed as rectangle
+  geom_tile(aes(x = 90.67, y = 0, width = 3.33, height = 6), fill = "#E5E5E3") + # Right
+  
+  # Trapezoid
+  #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(10.92, 11.08, 7.08, 6.92)), fill = NHL_red) + # Right
+  #geom_polygon(aes(x = c(100, 100, 89, 89), y = c(-10.92, -11.08, -7.08, -6.92)), fill = NHL_red) + # Right
+  
+  # Lines
+  geom_tile(aes(x = 25.5, y = 0, width = 1, height = 85),  fill = NHL_blue) + # Right Blue line
+  geom_tile(aes(x = 89, y = 0, width = 2 / 12, height = 73.5), fill = NHL_red) + # Right goal line
+  
+  # Borders as line segments 
+  geom_line(aes(x = c(0, 72), y = c(42.5, 42.5))) + # Top
+  geom_line(aes(x = c(0, 72), y = c(-42.5, -42.5))) + # Bottom
+  geom_line(aes(x = c(100, 100), y = c(-14.5, 14.5))) + # Right
+  geom_arc(aes(x0 = 72, y0 = 14.5, start = pi / 2, end = 0, r = 28)) + # Top-Right
+  geom_arc(aes(x0 = 72, y0 = -14.5, start = pi, end =  pi / 2, r = 28)) + # Bottom-Right
+  
+  #plot goal points
+  geom_point(data = goals2019playoffs2, aes(x = coordx, y = coordy), alpha = 0.05, size=1, show.legend = FALSE) +
+  
+  # Fixed scale for the coordinate system  
+  coord_fixed()+
+  theme_void()+
+    transition_states(transition, transition_length = 1,
+                      state_length = 1)+
+  
+  labs(title = "Heatmap of Goals in the 2019 Playoffs")+
+  theme(plot.title = element_text(hjust=0.5, face = 'bold.italic', size = 30))+
+    annotation_custom(nhl_logo, xmin = 92, xmax = 100, ymin = 37, ymax = 47)}
+}
+
+#animate graphs
+{
+anim_house <- animate(house_plot,
+                      duration = 20,
+                      fps = 10,
+                      width = 960,
+                      height = 400,
+                      nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim_house.gif"))
+anim2010 <- animate(playoffs2010_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2010.gif"))
+anim2011 <- animate(playoffs2011_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2011.gif"))
+anim2012 <- animate(playoffs2012_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2012.gif"))
+anim2013 <- animate(playoffs2013_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2013.gif"))
+anim2014 <- animate(playoffs2014_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2014.gif"))
+anim2015 <- animate(playoffs2015_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2015.gif"))
+anim2016 <- animate(playoffs2016_heatmap,
+                      duration = 2,
+                      fps = 1,
+                      width = 960,
+                      height = 960,
+                    nframes = 25000,
+                      renderer = gifski_renderer("Desktop/anim2016.gif"))
+anim2017 <- animate(playoffs2017_heatmap,
+                 duration = 2,
+                 fps = 1,
+                 width = 960,
+                 height = 960,
+                 nframes = 25000,
+                 renderer = gifski_renderer("Desktop/anim2017.gif"))
+anim2018 <- animate(playoffs2018_heatmap,
+                 duration = 2,
+                 fps = 1,
+                 width = 960,
+                 height = 960,
+                 nframes = 25000,
+                 renderer = gifski_renderer("Desktop/anim2018.gif"))
+anim2019 <- animate(playoffs2019_heatmap,
+                    duration = 2,
+                    fps = 1,
+                    width = 960,
+                    height = 960,
+                    nframes = 25000,
+                    renderer = gifski_renderer("Desktop/anim2019.gif"))
+save_animhouse <- magick::image_read(anim_house)
+house <- image_animate(save_animhouse, delay = .01)
+save_anim2010 <- magick::image_read(anim2010)
+final2010 <- image_animate(save_anim2010, delay = .01)
+save_anim2011 <- magick::image_read(anim2011)
+final2011 <- image_animate(save_anim2011, delay = .01)
+save_anim2012 <- magick::image_read(anim2012)
+final2012 <- image_animate(save_anim2012, delay = .01)
+save_anim2013 <- magick::image_read(anim2013)
+final2013 <- image_animate(save_anim2013, delay = .01)
+save_anim2014 <- magick::image_read(anim2014)
+final2014 <- image_animate(save_anim2014, delay = .01)
+save_anim2015 <- magick::image_read(anim2015)
+final2015 <- image_animate(save_anim2015, delay = .01)
+save_anim2016 <- magick::image_read(anim2016)
+final2016 <- image_animate(save_anim2016, delay = .01)
+save_anim2017 <- magick::image_read(anim2017)
+final2017 <- image_animate(save_anim2017, delay = .01)
+save_anim2018 <- magick::image_read(anim2018)
+final2018 <- image_animate(save_anim2018, delay = .01)
+save_anim2019 <- magick::image_read(anim2019)
+final2019 <- image_animate(save_anim2019, delay = .01)
+}
+
+#Create 1st frame of final gif
+new_gif <- image_append(c(final2010[1], house[1]), stack = TRUE)
+
+#Combine each frame to create final gif
+{
+for(i in 2:20){
+  combined1 <- image_append(c(final2010[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined1)
+}
+for(i in 21:40){
+  combined2 <- image_append(c(final2011[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined2)
+}
+for(i in 41:60){
+  combined3 <- image_append(c(final2012[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined3)
+}
+for(i in 61:80){
+  combined4 <- image_append(c(final2013[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined4)
+}
+for(i in 81:100){
+  combined5 <- image_append(c(final2014[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined5)
+}
+for(i in 101:120){
+  combined6 <- image_append(c(final2015[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined6)
+}
+for(i in 121:140){
+  combined7 <- image_append(c(final2016[1], house[i]), stack = TRUE)
+  new_gif <- c(new_gif, combined7)
+}
+  for(i in 141:160){
+    combined8 <- image_append(c(final2017[1], house[i]), stack = TRUE)
+    new_gif <- c(new_gif, combined8)
+  }
+  for(i in 161:180){
+    combined9 <- image_append(c(final2018[1], house[i]), stack = TRUE)
+    new_gif <- c(new_gif, combined9)
+  }
+  for(i in 181:200){
+    combined10 <- image_append(c(final2019[1], house[i]), stack = TRUE)
+    new_gif <- c(new_gif, combined10)
+  }
+image_write(new_gif, "Desktop/new_gif.gif") 
+}
+new_gif
+ 
